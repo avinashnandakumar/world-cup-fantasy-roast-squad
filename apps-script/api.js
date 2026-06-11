@@ -104,3 +104,144 @@ function syncFakeApiData() {
   rebuildScoringOutputs();
   appendSyncLog_('info', 'syncFakeApiData', 'Fake API payload normalized and scored.', 'matches=' + normalized.matches.length);
 }
+
+function doPost(event) {
+  try {
+    var payload = JSON.parse(event.postData && event.postData.contents ? event.postData.contents : '{}');
+    var result = applyExternalMatchSyncPayload_(payload);
+    return createJsonResponse_(result);
+  } catch (error) {
+    appendSyncLog_('error', 'doPost', 'External sync failed.', error.message || String(error));
+    return createJsonResponse_({
+      ok: false,
+      error: error.message || String(error)
+    });
+  }
+}
+
+function applyExternalMatchSyncPayload_(payload) {
+  setupSheets();
+  validateExternalSyncToken_(payload.token);
+
+  var matches = payload.matches || [];
+  var events = payload.events || [];
+  if (!Array.isArray(matches) || !Array.isArray(events)) {
+    throw new Error('Payload must include matches and events arrays.');
+  }
+
+  var mergedMatches = preserveManualMatchOverrides_(matches);
+  var mergedEvents = preserveManualEvents_(events);
+  writeTable_(WC_SHEETS.MATCHES, WC_HEADERS.Matches, mergedMatches);
+  writeTable_(WC_SHEETS.MATCH_EVENTS, WC_HEADERS.MatchEvents, mergedEvents);
+  var rebuildResult = rebuildScoringOutputs();
+
+  appendSyncLog_(
+    'info',
+    'externalMatchSync',
+    'External match sync applied.',
+    'source=' + (payload.source || 'unknown') + ', matches=' + mergedMatches.length + ', events=' + mergedEvents.length
+  );
+
+  return {
+    ok: true,
+    matches: mergedMatches.length,
+    events: mergedEvents.length,
+    ledgerRows: rebuildResult.ledgerRows,
+    standingsRows: rebuildResult.standingsRows,
+    receivedAtUtc: new Date().toISOString()
+  };
+}
+
+function validateExternalSyncToken_(token) {
+  var expected = getExternalSyncToken_();
+  if (!expected) {
+    throw new Error('Missing externalSyncToken. Set it in Script Properties or Settings.');
+  }
+  if (String(token || '') !== String(expected)) {
+    throw new Error('Invalid external sync token.');
+  }
+}
+
+function getExternalSyncToken_() {
+  var propertyToken = PropertiesService.getScriptProperties().getProperty('EXTERNAL_SYNC_TOKEN');
+  if (propertyToken) {
+    return propertyToken;
+  }
+  var settings = readSettingsMap_();
+  return settings.externalSyncToken || '';
+}
+
+function preserveManualMatchOverrides_(incomingMatches) {
+  var existing = readTable_(WC_SHEETS.MATCHES);
+  var existingById = {};
+  existing.forEach(function (row) {
+    existingById[row.matchId] = row;
+  });
+
+  var seen = {};
+  var rows = incomingMatches.map(function (match) {
+    var existingRow = existingById[match.matchId];
+    seen[match.matchId] = true;
+    if (existingRow && isTruthy_(existingRow.manualOverride)) {
+      return existingRow;
+    }
+    return normalizeExternalMatchRow_(match);
+  });
+
+  existing.forEach(function (row) {
+    if (isTruthy_(row.manualOverride) && !seen[row.matchId]) {
+      rows.push(row);
+    }
+  });
+
+  return rows;
+}
+
+function preserveManualEvents_(incomingEvents) {
+  var existing = readTable_(WC_SHEETS.MATCH_EVENTS);
+  var manualEvents = existing.filter(function (row) {
+    return String(row.source || '').toLowerCase() === 'manual';
+  });
+  return incomingEvents.map(normalizeExternalEventRow_).concat(manualEvents);
+}
+
+function normalizeExternalMatchRow_(match) {
+  return {
+    matchId: String(match.matchId || ''),
+    stage: normalizeStage_(match.stage),
+    group: match.group || '',
+    homeTeamId: match.homeTeamId || '',
+    awayTeamId: match.awayTeamId || '',
+    homeScore: match.homeScore === null || match.homeScore === undefined ? '' : Number(match.homeScore),
+    awayScore: match.awayScore === null || match.awayScore === undefined ? '' : Number(match.awayScore),
+    status: normalizeMatchStatus_(match.status),
+    winnerTeamId: match.winnerTeamId || '',
+    decidedByPens: match.decidedByPens === true,
+    kickoffUtc: match.kickoffUtc || '',
+    lastUpdatedUtc: match.lastUpdatedUtc || new Date().toISOString(),
+    manualOverride: false
+  };
+}
+
+function normalizeExternalEventRow_(event) {
+  return {
+    eventId: String(event.eventId || ''),
+    matchId: String(event.matchId || ''),
+    teamId: event.teamId || '',
+    eventType: event.eventType || '',
+    minute: event.minute || '',
+    count: event.count === undefined || event.count === '' ? 1 : Number(event.count),
+    notes: event.notes || '',
+    source: event.source || 'external-api'
+  };
+}
+
+function isTruthy_(value) {
+  return value === true || String(value).toLowerCase() === 'true';
+}
+
+function createJsonResponse_(payload) {
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}

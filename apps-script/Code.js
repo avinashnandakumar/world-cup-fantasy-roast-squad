@@ -5,6 +5,15 @@ function onOpen() {
     .addItem('Load simulation data', 'loadSimulationData')
     .addItem('Sync fake API data', 'syncFakeApiData')
     .addItem('Rebuild scoring outputs', 'rebuildScoringOutputs')
+    .addSeparator()
+    .addItem('Set up draft sheets', 'setupDraftSheets')
+    .addItem('Refresh draft board', 'refreshDraftBoard')
+    .addItem('Record command center pick', 'recordDraftPickFromCommandCenter')
+    .addItem('Resolve sealed bids', 'resolveSealedBids')
+    .addItem('Generate snake draft order', 'generateSnakeDraftOrder')
+    .addItem('Export Command Center to league tabs', 'exportDraftToRosters')
+    .addItem('Format draft workbook', 'formatDraftWorkbook')
+    .addSeparator()
     .addItem('Install minute trigger', 'installMinuteTrigger')
     .addToUi();
 }

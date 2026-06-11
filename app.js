@@ -147,7 +147,6 @@ function render() {
   renderUpdated();
   renderStandings();
   renderFlags();
-  renderManagerSelect();
   renderCountryBreakdown();
   renderMatches();
 }
@@ -197,37 +196,47 @@ function renderFlags() {
   `).join("");
 }
 
-function renderManagerSelect() {
-  $("manager-select").innerHTML = sortedStandings().map((standing) => `
-    <option value="${standing.managerId}">${standing.displayName}</option>
-  `).join("");
-  $("manager-select").value = selectedManagerId;
-  $("manager-select").addEventListener("change", (event) => {
-    selectedManagerId = event.target.value;
-    renderCountryBreakdown();
-  });
-}
-
 function renderCountryBreakdown() {
-  const rosters = model.rosters.filter((roster) => roster.managerId === selectedManagerId).slice(0, 6);
-  const manager = managerById(selectedManagerId);
-  $("country-breakdown").innerHTML = rosters.map((roster, index) => {
-    const team = teamById(roster.teamId);
-    const totals = categoryTotalsForTeam(roster.teamId);
-    const total = Object.values(totals).reduce((sum, points) => sum + points, 0);
+  const managerRows = rosterManagersInOrder();
+  $("roster-count-pill").textContent = `${model.rosters.length} countries drafted`;
+  $("country-breakdown").innerHTML = managerRows.map(({ managerId, displayName, rank, totalPoints }, managerIndex) => {
+    const manager = managerById(managerId);
+    const countries = model.rosters
+      .filter((roster) => roster.managerId === managerId)
+      .map((roster) => {
+        const team = teamById(roster.teamId);
+        return {
+          roster,
+          team,
+          points: totalPointsForTeam(roster.teamId)
+        };
+      })
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return String(a.team?.name || a.roster.teamId).localeCompare(String(b.team?.name || b.roster.teamId));
+      });
+
     return `
-      <article class="country-card" style="--manager-color:${managerColor(manager)}; ${flagStyle(index)}">
-        <div class="country-top">
-          <span class="flag-square">${team?.shortName || "WC"}</span>
-          <strong>${fmt(total)} pts</strong>
-        </div>
-        <h3>${team?.name || roster.teamId}</h3>
-        <p class="country-meta">Group ${team?.group || "-"} · ${prettyStatus(team?.status)}</p>
-        <div class="mini-stats">
-          <span>Wins <strong>${fmt(totals.wins)}</strong></span>
-          <span>Goals <strong>${fmt(totals.goals)}</strong></span>
-          <span>Defense <strong>${fmt(totals.defense)}</strong></span>
-          <span>Bonus <strong>${fmt(totals.bonuses)}</strong></span>
+      <article class="roster-card" style="--manager-color:${managerColor(manager)}">
+        <header class="roster-card-header">
+          <span class="player-swatch"></span>
+          <div>
+            <h3>${displayName}</h3>
+            <p class="country-meta">${countries.length} countries · ${fmt(totalPoints)} total pts</p>
+          </div>
+          ${rank ? `<span class="rank-cell">${rank}</span>` : ""}
+        </header>
+        <div class="roster-country-list">
+          ${countries.map(({ roster, team, points }, countryIndex) => `
+            <div class="roster-country-row" style="${flagStyle(managerIndex + countryIndex)}">
+              <span class="flag-square">${team?.shortName || "WC"}</span>
+              <span class="roster-country-name">
+                <strong>${team?.name || roster.teamId}</strong>
+                <span>Group ${team?.group || "-"} · ${prettyStatus(team?.status)}</span>
+              </span>
+              <strong class="country-point-number">${fmt(points)}</strong>
+            </div>
+          `).join("") || `<p class="country-meta">No countries drafted yet.</p>`}
         </div>
       </article>
     `;
@@ -315,6 +324,28 @@ function sortedStandings() {
   return [...model.standings].sort((a, b) => Number(a.rank) - Number(b.rank));
 }
 
+function rosterManagersInOrder() {
+  const seen = new Set();
+  const rankedManagers = sortedStandings().map((standing) => {
+    seen.add(standing.managerId);
+    return {
+      managerId: standing.managerId,
+      displayName: standing.displayName,
+      rank: standing.rank,
+      totalPoints: Number(standing.totalPoints || 0)
+    };
+  });
+  const unrankedManagers = model.managers
+    .filter((manager) => !seen.has(manager.managerId))
+    .map((manager) => ({
+      managerId: manager.managerId,
+      displayName: manager.displayName || manager.managerId,
+      rank: null,
+      totalPoints: totalPointsForManager(manager.managerId)
+    }));
+  return [...rankedManagers, ...unrankedManagers];
+}
+
 function managerById(managerId) {
   return model.managers.find((manager) => manager.managerId === managerId) || {};
 }
@@ -347,6 +378,18 @@ function categoryTotalsForManager(managerId) {
 
 function categoryTotalsForTeam(teamId) {
   return summarizeRows(model.ledger.filter((row) => row.teamId === teamId));
+}
+
+function totalPointsForTeam(teamId) {
+  return model.ledger
+    .filter((row) => row.teamId === teamId)
+    .reduce((sum, row) => sum + Number(row.points || 0), 0);
+}
+
+function totalPointsForManager(managerId) {
+  return model.ledger
+    .filter((row) => row.managerId === managerId)
+    .reduce((sum, row) => sum + Number(row.points || 0), 0);
 }
 
 function summarizeRows(rows) {

@@ -15,13 +15,13 @@ Fantasy football-style league for the 2026 FIFA World Cup. Managers draft countr
 
 ```text
 World Cup API
-  -> Google Apps Script sync/scoring worker
+  -> local Python sync script or Google Apps Script sync worker
   -> Google Sheets tabs
   -> public dashboard JSON
   -> GitHub Pages website
 ```
 
-The frontend should never contain API keys or Google credentials. Apps Script owns API calls, scoring calculations, sheet writes, audit rows, and snapshot publishing.
+The frontend should never contain API keys or Google credentials. Apps Script owns scoring calculations, sheet writes, audit rows, and snapshot publishing. Live API data can be pushed from a local Mac cron job; see `docs/local-api-sync.md`.
 
 ## Known Manual Setup Steps
 
@@ -41,4 +41,3 @@ The implementation should still be fully testable before those steps by using si
 - `schemas/`: Google Sheets and JSON contract definitions.
 - `sample-data/`: simulated league and tournament data.
 - `docs/`: setup, testing, API provider, and UI panel documentation.
-

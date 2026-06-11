@@ -394,10 +394,100 @@ select {
   font-weight: 850;
 }
 
-.country-breakdown {
+.roster-breakdown {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.countries-section .soft-pill {
+  border-color: var(--line);
+  background: white;
+  color: var(--ink);
+}
+
+.roster-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 34px rgba(16, 20, 24, 0.08);
+  overflow: hidden;
+}
+
+.roster-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 4.75rem;
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--manager-color, var(--green)) 16%, white), rgba(255, 255, 255, 0.82));
+}
+
+.roster-card-header .rank-cell {
+  margin-left: auto;
+}
+
+.roster-card-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.roster-country-list {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.45rem;
+}
+
+.roster-country-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3.55rem;
+  padding: 0.45rem;
+  border-radius: var(--radius);
+}
+
+.roster-country-row:nth-child(odd) {
+  background: rgba(16, 20, 24, 0.035);
+}
+
+.roster-country-row .flag-square {
+  width: 2.45rem;
+  height: 1.9rem;
+  font-size: 0.72rem;
+}
+
+.roster-country-name {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.roster-country-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-country-name span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.country-point-number {
+  min-width: 3.2rem;
+  text-align: right;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 
 .country-card {
@@ -751,12 +841,11 @@ select {
     min-height: 2.8rem;
   }
 
-  .country-breakdown,
+  .roster-breakdown,
   .match-strip {
     grid-template-columns: 1fr;
   }
 
-  .country-card,
   .match-card {
     padding: 0.9rem;
   }

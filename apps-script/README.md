@@ -13,6 +13,7 @@ It is designed to be copied into a Google Apps Script project that is attached t
 - `sheets.js`: Google Sheets setup, table reads/writes, settings, and sync logging.
 - `snapshot.js`: dashboard JSON snapshot builder and `doGet` web app endpoint.
 - `simulation.js`: simulated league data loader and self-check helper.
+- `draft.js`: draft command center, team tiers, auction/sealed/snake helper tabs, anomaly checks, and draft-to-roster export.
 
 ## Manual Setup
 
@@ -25,6 +26,12 @@ It is designed to be copied into a Google Apps Script project that is attached t
    - **Load simulation data** fills the sheet with fake managers, rosters, teams, matches, events, scoring ledger, and standings.
    - **Sync fake API data** normalizes a fake provider payload into `Matches` and `MatchEvents`.
    - **Rebuild scoring outputs** recalculates `ScoringLedger` and `Standings` from canonical sheet data.
+   - **Set up draft sheets** creates the draft command center and draft helper tabs.
+   - **Refresh draft board** updates live budgets, team assignments, and anomalies.
+   - **Record command center pick** records one pick from `DraftCommandCenter`.
+   - **Resolve sealed bids** awards valid Tier C sealed bids from `DraftBids`.
+   - **Generate snake draft order** creates the catch-up/snake order from current rosters and budgets.
+   - **Export Command Center to league tabs** builds the scoring `Managers`, `Teams`, and `Rosters` tabs from the visible Command Center pick table.
    - **Install minute trigger** creates a 1-minute trigger for `syncFromConfiguredSource`.
 
 ## Web App Endpoint
@@ -43,6 +50,19 @@ Supported query parameter:
 ```
 
 The default endpoint is `snapshot`.
+
+The Web App also supports `POST` from the local Python sync script. The request body must include:
+
+```json
+{
+  "token": "same value as EXTERNAL_SYNC_TOKEN",
+  "source": "api-football",
+  "matches": [],
+  "events": []
+}
+```
+
+`doPost` writes `Matches` and `MatchEvents`, rebuilds scoring outputs, and appends `SyncLog`.
 
 ## Scoring Rules Implemented
 
