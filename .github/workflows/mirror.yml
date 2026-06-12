@@ -17,7 +17,7 @@ jobs:
 
       - name: Save Mirror Config
         run: |
-          git remote add mirror https://x-access-token:${{ secrets.MIRROR_TOKEN }}@://github.com/avinashnandakumar//world-cup-fantasy-roast-squad.git
+          git remote add mirror https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/avinashnandakumar/world-cup-fantasy-roast-squad.git
           git fetch mirror main || true
           git checkout mirror/main -- config.js || true
           git config user.name "github-actions"
