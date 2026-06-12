@@ -13,27 +13,29 @@
         <div class="stadium-wash"></div>
         <header class="topline">
           <img src="./assets/avi_assets/2026-fifa-world-cup-logo.jpg" alt="World Cup 2026 logo" class="brand-mark">
-          <div class="live-chip"><span></span> Simulated live table</div>
+          <div class="live-chip" id="top-updated"><span></span> Updating</div>
         </header>
 
         <div class="hero-grid">
           <section class="hero-copy">
             <p class="eyebrow">World Cup Fantasy</p>
-            <h1 id="page-title">Live table, zero clutter.</h1>
+            <h1 id="page-title">MH Fantasy World Cup</h1>
             <p class="typing-line" aria-live="polite">
-              <span id="typing-text">Black Arrows lead by 1 point</span>
+              <span id="typing-text">Loading table notes</span>
             </p>
             <nav class="jump-row" aria-label="Dashboard sections">
               <a href="#standings">Standings</a>
               <a href="#countries">Rosters</a>
-              <a href="#matches">Live games</a>
+              <a href="#matches">Today</a>
+              <a href="#timeline">Timeline</a>
+              <a href="#all-games">All games</a>
+              <a href="#scoring">Scoring</a>
             </nav>
           </section>
 
           <section id="standings" class="table-stage" aria-labelledby="standings-title">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">Priority 6/5</p>
                 <h2 id="standings-title">Live Standings</h2>
               </div>
               <span id="last-updated" class="soft-pill">Loading</span>
@@ -64,10 +66,8 @@
       <section id="countries" class="content-section countries-section" aria-labelledby="countries-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Priority 4/5</p>
             <h2 id="countries-title">Rosters</h2>
           </div>
-          <span class="soft-pill roster-count-pill" id="roster-count-pill">Loading rosters</span>
         </div>
         <div id="country-breakdown" class="roster-breakdown"></div>
       </section>
@@ -75,12 +75,60 @@
       <section id="matches" class="content-section match-section" aria-labelledby="matches-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Priority 2/5</p>
-            <h2 id="matches-title">Live Games</h2>
+            <h2 id="matches-title">Today's Games</h2>
           </div>
-          <span class="soft-pill">Supporting context</span>
         </div>
         <div id="match-strip" class="match-strip"></div>
+      </section>
+
+      <section id="timeline" class="content-section timeline-section" aria-labelledby="timeline-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="timeline-title">Points Over Time</h2>
+          </div>
+          <span class="soft-pill">Cumulative</span>
+        </div>
+        <div id="points-timeline" class="points-timeline"></div>
+      </section>
+
+      <section id="scoring" class="content-section scoring-section" aria-labelledby="scoring-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="scoring-title">Scoring Format</h2>
+          </div>
+        </div>
+        <div class="scoring-grid" aria-label="World Cup fantasy scoring rules">
+          <article class="scoring-card">
+            <h3>Match Points</h3>
+            <div class="scoring-row"><span>Win</span><strong>+1</strong></div>
+            <div class="scoring-row"><span>Group-stage draw</span><strong>+0.5</strong></div>
+            <div class="scoring-row"><span>Goal scored</span><strong>+0.5</strong></div>
+            <div class="scoring-row"><span>Goal allowed</span><strong>-0.25</strong></div>
+            <div class="scoring-row"><span>Clean sheet</span><strong>+0.5</strong></div>
+            <div class="scoring-row"><span>Red card</span><strong>-1</strong></div>
+          </article>
+          <article class="scoring-card">
+            <h3>Bonuses</h3>
+            <div class="scoring-row"><span>Qualify for knockouts</span><strong>+0.5</strong></div>
+            <div class="scoring-row"><span>Win group</span><strong>+1</strong></div>
+            <div class="scoring-row"><span>Win World Cup</span><strong>+2</strong></div>
+          </article>
+          <article class="scoring-card scoring-notes">
+            <h3>Notes</h3>
+            <p>Draw points only apply in the group stage.</p>
+            <p>Penalty shootout goals do not count as goals scored.</p>
+            <p>There are no round-by-round knockout advancement bonuses.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="all-games" class="content-section all-games-section" aria-labelledby="all-games-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="all-games-title">All Games</h2>
+          </div>
+        </div>
+        <div id="all-games-list" class="all-games-list"></div>
       </section>
     </main>
 

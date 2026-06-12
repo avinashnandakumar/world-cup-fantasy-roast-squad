@@ -136,6 +136,10 @@ select {
   animation: pulse 1.8s infinite;
 }
 
+.live-chip {
+  white-space: nowrap;
+}
+
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(18rem, 0.66fr) minmax(39rem, 1.34fr);
@@ -167,7 +171,7 @@ p {
 }
 
 h1 {
-  max-width: 8ch;
+  max-width: 12ch;
   margin-bottom: 1rem;
   font-size: clamp(3.1rem, 7vw, 5.7rem);
   line-height: 0.9;
@@ -396,8 +400,8 @@ select {
 
 .roster-breakdown {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
+  gap: 0.55rem;
   align-items: start;
 }
 
@@ -419,37 +423,48 @@ select {
 .roster-card-header {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  min-height: 4.75rem;
-  padding: 0.85rem;
+  gap: 0.5rem;
+  min-height: 3.9rem;
+  padding: 0.65rem;
   border-bottom: 1px solid var(--line);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--manager-color, var(--green)) 16%, white), rgba(255, 255, 255, 0.82));
 }
 
 .roster-card-header .rank-cell {
-  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .roster-card-header h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.9rem;
   overflow-wrap: anywhere;
+}
+
+.roster-total-points {
+  margin-left: auto;
+  padding: 0.34rem 0.45rem;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: white;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .roster-country-list {
   display: grid;
   gap: 0.1rem;
-  padding: 0.45rem;
+  padding: 0.28rem;
 }
 
 .roster-country-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(2.2rem, auto);
   align-items: center;
-  gap: 0.65rem;
-  min-height: 3.55rem;
-  padding: 0.45rem;
+  gap: 0.36rem;
+  min-height: 2.75rem;
+  padding: 0.28rem;
   border-radius: var(--radius);
 }
 
@@ -458,8 +473,8 @@ select {
 }
 
 .roster-country-row .flag-square {
-  width: 2.45rem;
-  height: 1.9rem;
+  width: 2rem;
+  height: 1.55rem;
   font-size: 0.72rem;
 }
 
@@ -477,15 +492,15 @@ select {
 
 .roster-country-name span {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   font-weight: 750;
   text-transform: capitalize;
 }
 
 .country-point-number {
-  min-width: 3.2rem;
+  min-width: 2.2rem;
   text-align: right;
-  font-size: 1rem;
+  font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
@@ -518,6 +533,16 @@ select {
   color: white;
   font-weight: 950;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.flag-square.flag-emoji {
+  background: white;
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 20, 24, 0.12),
+    0 8px 18px rgba(16, 20, 24, 0.12);
 }
 
 .country-card h3 {
@@ -554,10 +579,39 @@ select {
   color: var(--ink);
 }
 
-.match-strip {
+.match-strip,
+.all-games-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 0.75rem;
+}
+
+.all-games-list {
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.match-day-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.match-day-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.match-day-divider span {
+  white-space: nowrap;
 }
 
 .match-card {
@@ -607,6 +661,229 @@ select {
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.88rem;
   font-weight: 750;
+}
+
+.match-manager-points {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.8rem;
+}
+
+.match-manager-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.38rem;
+  min-height: 2rem;
+  padding: 0.32rem 0.42rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.match-manager-row i {
+  width: 0.52rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: var(--manager-color, var(--green));
+}
+
+.match-manager-row strong,
+.match-manager-row em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-manager-row strong {
+  font-size: 0.84rem;
+}
+
+.match-manager-row em {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-style: normal;
+}
+
+.match-manager-row b {
+  font-variant-numeric: tabular-nums;
+}
+
+.points-timeline {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.timeline-chart {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--timeline-days), minmax(4.5rem, 1fr));
+  min-height: 15rem;
+  padding: 1rem 0.7rem 2.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 249, 244, 0.9)),
+    repeating-linear-gradient(0deg, transparent 0 2.8rem, rgba(16, 20, 24, 0.06) 2.8rem calc(2.8rem + 1px));
+  overflow-x: auto;
+}
+
+.timeline-plot {
+  position: absolute;
+  inset: 1rem 0.9rem 2.4rem;
+  width: calc(100% - 1.8rem);
+  height: calc(100% - 3.4rem);
+  overflow: visible;
+}
+
+.timeline-plot polyline {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.timeline-plot circle {
+  stroke: white;
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.timeline-day {
+  position: relative;
+  min-width: 4.5rem;
+}
+
+.timeline-date {
+  position: absolute;
+  inset: auto 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timeline-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.55rem;
+}
+
+.timeline-card {
+  display: grid;
+  gap: 0.18rem;
+  min-height: 5.5rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.timeline-card .timeline-date {
+  position: static;
+  text-align: left;
+}
+
+.timeline-card strong {
+  overflow-wrap: anywhere;
+}
+
+.timeline-card span:last-child {
+  color: #0c6b45;
+  font-size: 1.1rem;
+  font-weight: 950;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.timeline-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.timeline-legend i {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: var(--manager-color, var(--green));
+}
+
+.scoring-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+}
+
+.scoring-card {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(16, 20, 24, 0.07);
+}
+
+.scoring-card h3 {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+}
+
+.scoring-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-height: 2.35rem;
+  border-top: 1px solid var(--line);
+  font-weight: 850;
+}
+
+.scoring-row:first-of-type {
+  border-top: 0;
+}
+
+.scoring-row span {
+  color: var(--muted);
+}
+
+.scoring-row strong {
+  color: #0c6b45;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.scoring-notes {
+  background: #101820;
+  color: white;
+}
+
+.scoring-notes p {
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.58rem 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.scoring-notes p:first-of-type {
+  border-top: 0;
 }
 
 @keyframes pulse {
@@ -785,24 +1062,11 @@ select {
   }
 
   .fantasy-table td:nth-child(n + 4) {
-    display: flex;
-    justify-content: space-between;
-    grid-column: 1 / -1;
-    gap: 1rem;
-    border-top: 1px solid var(--line);
-    padding-top: 0.45rem;
-    color: var(--ink);
-    font-size: 0.86rem;
-    text-align: right;
+    display: none;
   }
 
   .fantasy-table td:nth-child(n + 4)::before {
-    content: attr(data-label);
-    color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 950;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    content: none;
   }
 
   .rank-cell {
@@ -819,7 +1083,7 @@ select {
   }
 
   .player-sub {
-    font-size: 0.74rem;
+    display: none;
   }
 
   .total-points {
@@ -842,8 +1106,32 @@ select {
   }
 
   .roster-breakdown,
-  .match-strip {
+  .match-strip,
+  .all-games-list {
     grid-template-columns: 1fr;
+  }
+
+  .roster-card-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .roster-total-points {
+    grid-column: 3;
+    margin-left: 0;
+  }
+
+  .roster-card-header .rank-cell {
+    display: none;
+  }
+
+  .timeline-chart {
+    grid-template-columns: repeat(var(--timeline-days), minmax(4rem, 1fr));
+    min-height: 12rem;
+  }
+
+  .timeline-legend span {
+    font-size: 0.76rem;
   }
 
   .match-card {
@@ -884,6 +1172,14 @@ select {
 
   .score-row span:last-child {
     text-align: center;
+  }
+
+  .match-manager-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .match-manager-row em {
+    grid-column: 2 / -1;
   }
 }
 

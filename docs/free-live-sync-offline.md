@@ -42,11 +42,35 @@ Edit the self-contained config block near the top of `scripts/sync_worldcup_free
 
 ```python
 DEFAULT_APPS_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/DEPLOYMENT_ID/exec"
+DEFAULT_APPS_SCRIPT_WEBAPP_URL_2 = ""
 DEFAULT_APPS_SCRIPT_SYNC_TOKEN = "same-long-random-secret"
+DEFAULT_APPS_SCRIPT_SYNC_TOKEN_2 = ""
 DEFAULT_WORLD_CUP_ESPN_DATES = ""
 ```
 
-Replace the deployment URL and token with your real values. Leave `DEFAULT_WORLD_CUP_ESPN_DATES` blank to use today's UTC date automatically, or set it to a specific `YYYYMMDD` date if you need to backfill/test one matchday. Environment variables with the same names still override the script defaults if you use them later.
+Replace the deployment URL and token with your real values. If you run two leagues, paste the second Apps Script Web App URL into `DEFAULT_APPS_SCRIPT_WEBAPP_URL_2`. Leave `DEFAULT_APPS_SCRIPT_SYNC_TOKEN_2` blank if both Apps Script projects use the same token, or set it if the second Sheet has a different `EXTERNAL_SYNC_TOKEN`.
+
+Leave `DEFAULT_WORLD_CUP_ESPN_DATES` blank to use today's local Mac date automatically, or set it to a specific `YYYYMMDD` date if you need to backfill/test one matchday. Environment variables with the same names still override the script defaults if you use them later.
+
+Each run prints:
+
+- ESPN fetch date.
+- Local timestamp and UTC timestamp.
+- Number of configured Google Sheet destinations.
+- Whether each destination has new data to post or is already current.
+- `No new data to post` when the normalized match/event payload did not change.
+- A short list of new/changed matches or events before posting to Google Sheets.
+
+Timestamp-only changes are ignored for hashing, so `lastUpdatedUtc` will not cause a post by itself.
+
+Each Google Sheet destination tracks its own last-posted hash inside `.worldcup-free-sync-state.json`. That means one league can post while another skips, and a failure in one destination does not force already-updated destinations to post again on the next run.
+
+Optional environment-variable format for two leagues:
+
+```bash
+export APPS_SCRIPT_WEBAPP_URLS="https://script.google.com/macros/s/FIRST/exec,https://script.google.com/macros/s/SECOND/exec"
+export APPS_SCRIPT_SYNC_TOKENS="first-token,second-token"
+```
 
 ## Test Commands
 
@@ -69,6 +93,26 @@ python3 scripts/sync_worldcup_free.py
 ```
 
 If nothing changed, it exits with `No data change` and does not call Apps Script.
+
+One-time fixture preload, from today's local date through the end of the group stage:
+
+```bash
+python3 scripts/sync_worldcup_free.py --fetch-all-matches --no-fetch-details
+```
+
+Use `--force` if you want to post the full known schedule even when a destination already has the same hash:
+
+```bash
+python3 scripts/sync_worldcup_free.py --fetch-all-matches --no-fetch-details --force
+```
+
+By default the end date is `20260627`. Override it if needed:
+
+```bash
+python3 scripts/sync_worldcup_free.py --fetch-all-matches --tournament-end-date 20260719 --no-fetch-details
+```
+
+Run the same command again later with a later `--tournament-end-date` once knockout teams are known. If you do fetch future knockout games early, ESPN may return placeholder teams such as `group-a-2nd-place`; later sync runs should overwrite those match rows with real country IDs once the tournament bracket is known.
 
 ## Cron Wrapper
 

@@ -18,7 +18,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,11 +29,14 @@ DEFAULT_STATE_FILE = ".worldcup-free-sync-state.json"
 DEFAULT_TIMEOUT_SECONDS = 20
 DEFAULT_LOCK_STALE_SECONDS = 120
 
-# Edit these three values if you want this file to be fully self-contained.
+# Edit these values if you want this file to be fully self-contained.
 # Environment variables with the same names still override these defaults.
 DEFAULT_APPS_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzmuI73ST4DC0NpnVW8_8kHOdl18127DXEX7H6nxZSxq6IOhEjeJr130-DGy7f0pRDpyg/exec"
+DEFAULT_APPS_SCRIPT_WEBAPP_URL_2 = "https://script.google.com/macros/s/AKfycbzlaQH0CaUKOO1mVADoKGXaJECF3T-ONOmFwLzayFqy6XxqszUqgvxVkj9TYRYP7PnD/exec"
 DEFAULT_APPS_SCRIPT_SYNC_TOKEN = "CLIPPERSGANGORDONTBANG"
+DEFAULT_APPS_SCRIPT_SYNC_TOKEN_2 = "CLIPPERSGANGORDONTBANG"
 DEFAULT_WORLD_CUP_ESPN_DATES = ""
+DEFAULT_WORLD_CUP_GROUP_STAGE_END_DATE = "20260627"
 
 
 TEAM_ALIASES = {
@@ -156,8 +159,29 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def today_utc_yyyymmdd() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%d")
+def local_now_iso() -> str:
+    return datetime.now().astimezone().replace(microsecond=0).isoformat()
+
+
+def today_local_yyyymmdd() -> str:
+    return datetime.now().astimezone().strftime("%Y%m%d")
+
+
+def parse_yyyymmdd(value: str) -> datetime:
+    return datetime.strptime(value, "%Y%m%d")
+
+
+def date_range_yyyymmdd(start: str, end: str) -> list[str]:
+    start_date = parse_yyyymmdd(start)
+    end_date = parse_yyyymmdd(end)
+    if end_date < start_date:
+        raise ValueError(f"End date {end} cannot be before start date {start}.")
+    dates = []
+    current = start_date
+    while current <= end_date:
+        dates.append(current.strftime("%Y%m%d"))
+        current += timedelta(days=1)
+    return dates
 
 
 def slug(value: str) -> str:
@@ -178,7 +202,25 @@ def team_id_from_name(name: str) -> str:
     candidate = slug(name)
     if candidate in TEAM_ALIASES:
         return TEAM_ALIASES[candidate]
+    if is_future_fixture_placeholder(candidate):
+        return candidate
     raise ValueError(f"No team alias for provider team name: {name!r}")
+
+
+def is_future_fixture_placeholder(candidate: str) -> bool:
+    return (
+        candidate.startswith("group-")
+        or candidate.startswith("winner-")
+        or candidate.startswith("loser-")
+        or candidate.startswith("1")
+        or candidate.startswith("2")
+        or candidate.startswith("3")
+    ) and (
+        "place" in candidate
+        or "winner" in candidate
+        or "runner-up" in candidate
+        or "match" in candidate
+    )
 
 
 def team_id_from_object(value: Any) -> str:
@@ -398,27 +440,44 @@ def extract_red_card_events(summary: dict[str, Any], match: dict[str, Any]) -> l
     return events
 
 
-def fetch_espn_payload(args: argparse.Namespace, previous: dict[str, Any]) -> dict[str, Any]:
+def fetch_scoreboard_for_date(args: argparse.Namespace, date_value: str) -> list[dict[str, Any]]:
     params = {"limit": str(args.limit)}
-    if args.dates:
-        params["dates"] = args.dates
+    if date_value:
+        params["dates"] = date_value
 
     scoreboard = http_json(args.scoreboard_url, params, args.timeout_seconds)
+    return scoreboard.get("events") or []
+
+
+def fetch_espn_payload(args: argparse.Namespace, previous: dict[str, Any]) -> dict[str, Any]:
+    fetch_dates = date_range_yyyymmdd(args.dates, args.tournament_end_date) if args.fetch_all_matches else [args.dates]
+    if args.fetch_all_matches:
+        print(f"Fetch-all-matches mode: {fetch_dates[0]} through {fetch_dates[-1]} ({len(fetch_dates)} days)")
+
     current_matches = []
     current_events = []
-    for event in scoreboard.get("events") or []:
-        match = normalize_espn_event(event)
-        current_matches.append(match)
-        if args.fetch_details and event_status_needs_details(match) and match.get("_providerEventId"):
-            with contextlib.suppress(Exception):
-                summary = http_json(
-                    args.summary_url,
-                    {"event": str(match["_providerEventId"])},
-                    args.timeout_seconds,
-                )
-                current_events.extend(extract_red_card_events(summary, match))
-                if args.detail_sleep_seconds > 0:
-                    time.sleep(args.detail_sleep_seconds)
+    seen_provider_events = set()
+    for fetch_date in fetch_dates:
+        events = fetch_scoreboard_for_date(args, fetch_date)
+        if args.fetch_all_matches and events:
+            print(f"- {fetch_date}: found {len(events)} match(es)")
+        for event in events:
+            provider_event_id = str(event.get("id") or "")
+            if provider_event_id and provider_event_id in seen_provider_events:
+                continue
+            seen_provider_events.add(provider_event_id)
+            match = normalize_espn_event(event)
+            current_matches.append(match)
+            if args.fetch_details and event_status_needs_details(match) and match.get("_providerEventId"):
+                with contextlib.suppress(Exception):
+                    summary = http_json(
+                        args.summary_url,
+                        {"event": str(match["_providerEventId"])},
+                        args.timeout_seconds,
+                    )
+                    current_events.extend(extract_red_card_events(summary, match))
+                    if args.detail_sleep_seconds > 0:
+                        time.sleep(args.detail_sleep_seconds)
 
     known_matches = dict(previous.get("knownMatches") or {})
     for match in current_matches:
@@ -445,11 +504,64 @@ def fetch_espn_payload(args: argparse.Namespace, previous: dict[str, Any]) -> di
 def canonical_hash(payload: dict[str, Any]) -> str:
     comparable = {
         "source": payload.get("source"),
-        "matches": payload.get("matches") or [],
+        "matches": [comparable_match(row) for row in payload.get("matches") or []],
         "events": payload.get("events") or [],
     }
     encoded = json.dumps(comparable, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def comparable_match(match: dict[str, Any]) -> dict[str, Any]:
+    ignored = {"lastUpdatedUtc"}
+    return {key: value for key, value in match.items() if key not in ignored}
+
+
+def describe_match(match: dict[str, Any]) -> str:
+    home = match.get("homeTeamId") or "home"
+    away = match.get("awayTeamId") or "away"
+    home_score = match.get("homeScore")
+    away_score = match.get("awayScore")
+    score = f"{home_score}-{away_score}" if home_score != "" or away_score != "" else "no score"
+    return f"{match.get('matchId')}: {home} vs {away}, {score}, status={match.get('status')}, kickoffUtc={match.get('kickoffUtc')}"
+
+
+def describe_event(event: dict[str, Any]) -> str:
+    return (
+        f"{event.get('eventId')}: match={event.get('matchId')}, team={event.get('teamId')}, "
+        f"type={event.get('eventType')}, minute={event.get('minute')}, count={event.get('count')}"
+    )
+
+
+def describe_payload_changes(previous: dict[str, Any], payload: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    previous_matches = previous.get("knownMatches") or {}
+    previous_events = previous.get("knownEvents") or {}
+
+    for match in payload.get("matches") or []:
+        match_id = match.get("matchId")
+        previous_match = previous_matches.get(match_id)
+        if not previous_match:
+            lines.append(f"NEW MATCH: {describe_match(match)}")
+            continue
+        before = comparable_match(previous_match)
+        after = comparable_match(match)
+        changed_fields = [key for key in sorted(after.keys()) if before.get(key) != after.get(key)]
+        if changed_fields:
+            details = ", ".join(f"{key}: {before.get(key)!r} -> {after.get(key)!r}" for key in changed_fields)
+            lines.append(f"UPDATED MATCH: {describe_match(match)} | {details}")
+
+    for event in payload.get("events") or []:
+        event_id = event.get("eventId")
+        previous_event = previous_events.get(event_id)
+        if not previous_event:
+            lines.append(f"NEW EVENT: {describe_event(event)}")
+            continue
+        changed_fields = [key for key in sorted(event.keys()) if previous_event.get(key) != event.get(key)]
+        if changed_fields:
+            details = ", ".join(f"{key}: {previous_event.get(key)!r} -> {event.get(key)!r}" for key in changed_fields)
+            lines.append(f"UPDATED EVENT: {describe_event(event)} | {details}")
+
+    return lines
 
 
 def load_state(path: Path) -> dict[str, Any]:
@@ -460,6 +572,80 @@ def load_state(path: Path) -> dict[str, Any]:
 
 def save_state(path: Path, state: dict[str, Any]) -> None:
     path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+
+
+def split_config_list(value: str) -> list[str]:
+    return [item.strip() for item in str(value or "").split(",") if item.strip()]
+
+
+def validate_config_value(name: str, value: str) -> str:
+    if not value:
+        raise RuntimeError(f"Missing required config value: {name}")
+    if "DEPLOYMENT_ID" in value or value == "same-long-random-secret":
+        raise RuntimeError(f"Replace placeholder config value for: {name}")
+    return value
+
+
+def configured_destinations() -> list[dict[str, str]]:
+    env_urls = split_config_list(os.environ.get("APPS_SCRIPT_WEBAPP_URLS", ""))
+    urls = env_urls or [
+        os.environ.get("APPS_SCRIPT_WEBAPP_URL") or DEFAULT_APPS_SCRIPT_WEBAPP_URL,
+        os.environ.get("APPS_SCRIPT_WEBAPP_URL_2") or DEFAULT_APPS_SCRIPT_WEBAPP_URL_2,
+    ]
+    urls = [url for url in urls if url]
+
+    env_tokens = split_config_list(os.environ.get("APPS_SCRIPT_SYNC_TOKENS", ""))
+    tokens = env_tokens or [
+        os.environ.get("APPS_SCRIPT_SYNC_TOKEN") or DEFAULT_APPS_SCRIPT_SYNC_TOKEN,
+        os.environ.get("APPS_SCRIPT_SYNC_TOKEN_2") or DEFAULT_APPS_SCRIPT_SYNC_TOKEN_2,
+    ]
+
+    if not urls:
+        raise RuntimeError("At least one Apps Script Web App URL is required.")
+
+    destinations = []
+    for index, url in enumerate(urls):
+        token = tokens[index] if index < len(tokens) and tokens[index] else tokens[0] if tokens else ""
+        validate_config_value(f"APPS_SCRIPT_WEBAPP_URL destination {index + 1}", url)
+        validate_config_value(f"APPS_SCRIPT_SYNC_TOKEN destination {index + 1}", token)
+        destinations.append({
+            "name": f"League {index + 1}",
+            "url": url,
+            "token": token,
+            "key": hashlib.sha256(url.encode("utf-8")).hexdigest()[:16],
+        })
+    return destinations
+
+
+def destination_state_map(state: dict[str, Any], destinations: list[dict[str, str]]) -> dict[str, Any]:
+    destination_states = dict(state.get("destinations") or {})
+    if not destination_states and state.get("lastHash") and destinations:
+        destination_states[destinations[0]["key"]] = {
+            "lastHash": state.get("lastHash"),
+            "lastPostedAtUtc": state.get("lastPostedAtUtc", ""),
+            "appsScriptResult": state.get("appsScriptResult", {}),
+        }
+    return destination_states
+
+
+def save_sync_state(
+    state_path: Path,
+    payload: dict[str, Any],
+    destinations: dict[str, Any],
+    payload_hash: str,
+) -> None:
+    save_state(
+        state_path,
+        {
+            "lastHash": payload_hash,
+            "lastFetchedAtUtc": payload["fetchedAtUtc"],
+            "knownMatches": payload["_knownMatches"],
+            "knownEvents": payload["_knownEvents"],
+            "matches": len(payload["matches"]),
+            "events": len(payload["events"]),
+            "destinations": destinations,
+        },
+    )
 
 
 class SingleRunLock:
@@ -486,18 +672,11 @@ class SingleRunLock:
                 self.path.unlink()
 
 
-def config_value(name: str, default: str) -> str:
-    value = os.environ.get(name) or default
-    if not value:
-        raise RuntimeError(f"Missing required config value: {name}")
-    if "DEPLOYMENT_ID" in value or value == "same-long-random-secret":
-        raise RuntimeError(f"Replace placeholder config value for: {name}")
-    return value
-
-
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sync free World Cup match data into Google Sheets via Apps Script.")
-    parser.add_argument("--dates", default=os.environ.get("WORLD_CUP_ESPN_DATES") or DEFAULT_WORLD_CUP_ESPN_DATES or today_utc_yyyymmdd())
+    parser.add_argument("--dates", default=os.environ.get("WORLD_CUP_ESPN_DATES") or DEFAULT_WORLD_CUP_ESPN_DATES or today_local_yyyymmdd())
+    parser.add_argument("--fetch-all-matches", action="store_true", help="Fetch every scoreboard date from --dates through --tournament-end-date.")
+    parser.add_argument("--tournament-end-date", default=os.environ.get("WORLD_CUP_TOURNAMENT_END_DATE", DEFAULT_WORLD_CUP_GROUP_STAGE_END_DATE), help="YYYYMMDD end date used with --fetch-all-matches. Defaults to the group stage end date.")
     parser.add_argument("--limit", type=int, default=int(os.environ.get("WORLD_CUP_ESPN_LIMIT", "100")))
     parser.add_argument("--state-file", default=os.environ.get("WORLD_CUP_SYNC_STATE_FILE", DEFAULT_STATE_FILE))
     parser.add_argument("--lock-file", default=os.environ.get("WORLD_CUP_SYNC_LOCK_FILE", ".worldcup-free-sync.lock"))
@@ -521,19 +700,47 @@ def main(argv: list[str]) -> int:
 
     with SingleRunLock(lock_path, args.lock_stale_seconds):
         state = load_state(state_path)
+        if args.fetch_all_matches:
+            print(f"Fetch date range for ESPN scoreboard: {args.dates} through {args.tournament_end_date}")
+        else:
+            print(f"Fetch date for ESPN scoreboard: {args.dates}")
+        print(f"Local now: {local_now_iso()}")
+        print(f"UTC now: {utc_now_iso()}")
         payload = fetch_espn_payload(args, state)
         if not payload["matches"] and not args.allow_empty_post:
             print("No matches found and no cached matches exist. Skipping post.")
             return 0
 
         payload_hash = canonical_hash(payload)
-        if not args.force and state.get("lastHash") == payload_hash:
+        changes = describe_payload_changes(state, payload)
+        destinations = configured_destinations()
+        destination_states = destination_state_map(state, destinations)
+        pending_destinations = [
+            destination for destination in destinations
+            if args.force or (destination_states.get(destination["key"]) or {}).get("lastHash") != payload_hash
+        ]
+
+        print(f"Configured destinations: {len(destinations)}")
+        for destination in destinations:
+            action = "will post" if destination in pending_destinations else "no new data"
+            print(f"- {destination['name']}: {action} ({destination['key']})")
+
+        if not pending_destinations:
             print(
-                "No data change. "
+                "No new data to post for any destination. "
                 f"known_matches={len(payload['matches'])} known_events={len(payload['events'])} "
                 f"current_matches={payload['_currentMatches']} hash={payload_hash}"
             )
             return 0
+
+        if changes:
+            print("New/changed data detected:")
+            for line in changes:
+                print(f"- {line}")
+        elif args.force:
+            print("No substantive match/event changes detected, but --force will post the current payload.")
+        else:
+            print("Hash changed, but no field-level changes were detected.")
 
         postable = {
             "source": payload["source"],
@@ -545,34 +752,37 @@ def main(argv: list[str]) -> int:
         if args.dry_run:
             print(json.dumps({k: v for k, v in postable.items() if k not in {"matches", "events"}}, indent=2))
             print(
-                f"Dry run: known_matches={len(payload['matches'])} known_events={len(payload['events'])} "
+                f"Dry run: would post to {len(pending_destinations)} destination(s). "
+                f"known_matches={len(payload['matches'])} known_events={len(payload['events'])} "
                 f"current_matches={payload['_currentMatches']} current_events={payload['_currentEvents']} "
                 f"hash={payload_hash}"
             )
             return 0
 
-        app_script_url = config_value("APPS_SCRIPT_WEBAPP_URL", DEFAULT_APPS_SCRIPT_WEBAPP_URL)
-        sync_token = config_value("APPS_SCRIPT_SYNC_TOKEN", DEFAULT_APPS_SCRIPT_SYNC_TOKEN)
-        postable["token"] = sync_token
-        result = post_json(app_script_url, postable, args.timeout_seconds)
-        if not result.get("ok"):
-            raise RuntimeError(f"Apps Script rejected sync: {result}")
+        posted = 0
+        for destination in pending_destinations:
+            destination_payload = dict(postable)
+            destination_payload["token"] = destination["token"]
+            print(f"Posting changed data to {destination['name']} ({destination['key']})...")
+            result = post_json(destination["url"], destination_payload, args.timeout_seconds)
+            if not result.get("ok"):
+                save_sync_state(state_path, payload, destination_states, payload_hash)
+                raise RuntimeError(f"Apps Script rejected sync for {destination['name']}: {result}")
 
-        save_state(
-            state_path,
-            {
+            destination_states[destination["key"]] = {
                 "lastHash": payload_hash,
                 "lastPostedAtUtc": utc_now_iso(),
-                "lastFetchedAtUtc": payload["fetchedAtUtc"],
-                "knownMatches": payload["_knownMatches"],
-                "knownEvents": payload["_knownEvents"],
                 "matches": len(payload["matches"]),
                 "events": len(payload["events"]),
                 "appsScriptResult": result,
-            },
-        )
+            }
+            save_sync_state(state_path, payload, destination_states, payload_hash)
+            posted += 1
+            print(f"Posted changed data to {destination['name']}.")
+
         print(
-            f"Posted changed data. known_matches={len(payload['matches'])} known_events={len(payload['events'])} "
+            f"Sync complete. posted_destinations={posted} skipped_destinations={len(destinations) - posted} "
+            f"known_matches={len(payload['matches'])} known_events={len(payload['events'])} "
             f"current_matches={payload['_currentMatches']} hash={payload_hash}"
         )
         return 0
