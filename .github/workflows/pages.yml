@@ -6,3 +6,5 @@ on:
   workflow_dispatch: # This adds the manual trigger button
 
 jobs:
+  deploy:
+    runs-on: ubuntu-latest
